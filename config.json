@@ -1,0 +1,69 @@
+{
+  "feeds": [
+    {
+      "id": "eia_today",
+      "name": "EIA Today in Energy",
+      "url": "https://www.eia.gov/rss/todayinenergy.xml",
+      "source_weight": 3
+    },
+    {
+      "id": "eia_press",
+      "name": "EIA Press Releases",
+      "url": "https://www.eia.gov/rss/press_rss.xml",
+      "source_weight": 3
+    },
+    {
+      "id": "fed_monetary",
+      "name": "Federal Reserve Monetary Policy",
+      "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+      "source_weight": 3
+    },
+    {
+      "id": "fed_sloos",
+      "name": "Federal Reserve SLOOS",
+      "url": "https://www.federalreserve.gov/feeds/sloos.xml",
+      "source_weight": 3
+    }
+  ],
+  "themes": {
+    "AI 전력": [
+      "data center", "electricity demand", "power generation", "power capacity",
+      "grid", "transformer", "gas turbine", "natural gas generation",
+      "hyperscaler", "electricity capacity"
+    ],
+    "가스·LNG": [
+      "natural gas", "lng", "liquefied natural gas", "gas pipeline",
+      "gas compression", "gas storage", "gas-fired"
+    ],
+    "정유": [
+      "refinery", "refining", "gasoline", "diesel", "jet fuel",
+      "crack spread", "refinery utilization", "petroleum product"
+    ],
+    "해양 에너지": [
+      "offshore", "deepwater", "subsea", "offshore drilling", "final investment decision"
+    ],
+    "통화·신용": [
+      "federal funds", "interest rate", "monetary policy", "fomc",
+      "bank lending", "loan officer", "credit conditions", "liquidity"
+    ]
+  },
+  "companies": {
+    "GEV": ["ge vernova"],
+    "POWL": ["powell industries"],
+    "STRL": ["sterling infrastructure"],
+    "BE": ["bloom energy"],
+    "KGS": ["kodiak gas services"],
+    "BKR": ["baker hughes"],
+    "FTI": ["technipfmc"],
+    "TDW": ["tidewater"],
+    "SDRL": ["seadrill"],
+    "OKE": ["oneok"],
+    "DINO": ["hf sinclair"],
+    "MPC": ["marathon petroleum"],
+    "VLO": ["valero energy", "valero"],
+    "LPG": ["dorian lpg"]
+  },
+  "minimum_score": 5,
+  "max_items_per_message": 8,
+  "state_retention_days": 90
+}
