@@ -102,16 +102,38 @@ def prune_seen(seen: dict[str, str], days: int) -> dict[str, str]:
     return result
 
 
-def discord_payload(items: list[dict[str, Any]], errors: list[str], test: bool = False) -> dict[str, Any]:
+def discord_payload(
+    items: list[dict[str, Any]],
+    errors: list[str],
+    config: dict[str, Any] | None = None,
+    test: bool = False,
+) -> dict[str, Any]:
     if test:
         return {"content": "✅ RSS crawler 연결 테스트: `rss-crawler` 채널 Webhook이 정상입니다."}
-    lines = [f"**투자 RSS 업데이트: {len(items)}건**"]
+    lines = [f"**📡 투자 RSS 업데이트: {len(items)}건**"]
     for item in items:
-        related = " · ".join(item["companies"] + item["themes"]) or "공식 자료"
+        contexts = (config or {}).get("theme_context", {})
+        related_companies = list(item["companies"])
+        why_parts: list[str] = []
+        check_parts: list[str] = []
+        for theme in item["themes"]:
+            context = contexts.get(theme, {})
+            related_companies.extend(context.get("related_companies", []))
+            if context.get("why_it_matters"):
+                why_parts.append(context["why_it_matters"])
+            if context.get("check"):
+                check_parts.append(context["check"])
+        related_companies = list(dict.fromkeys(related_companies))
+        summary = item["summary"][:500] or "RSS에 별도 요약이 없습니다. 원문 확인이 필요합니다."
         lines.extend([
             "",
-            f"**[{item['title']}]({item['url']})**",
-            f"{item['source']} · 점수 {item['score']} · {related}",
+            f"### [{item['title']}]({item['url']})",
+            f"**분류:** {' · '.join(item['themes']) or '공식 자료'}  |  **출처:** {item['source']}",
+            f"**무슨 일:** {summary}",
+            f"**왜 보나:** {' '.join(dict.fromkeys(why_parts)) or '보유 종목 직접 언급 여부와 투자 논지 영향을 확인해야 합니다.'}",
+            f"**연결 종목:** {', '.join(related_companies) or '포트폴리오 전반'}",
+            f"**확인 행동:** {' / '.join(dict.fromkeys(check_parts)) or '원문 확인 후 논지 변화 여부 판정'}",
+            "**현재 판정:** REVIEW · 자동 매매 행동 없음",
         ])
     if errors:
         lines.extend(["", f"⚠️ 피드 오류 {len(errors)}건: " + ", ".join(errors)])
@@ -167,7 +189,7 @@ def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
         if not relevant:
             print("미리보기로 보낼 관련 기사가 없습니다.")
             return 1
-        post_discord(webhook, discord_payload(relevant[:1], errors))
+        post_discord(webhook, discord_payload(relevant[:1], errors, config))
         print(f"미리보기 1건을 전송했습니다: {relevant[0]['title']}")
         return 0
 
@@ -180,7 +202,7 @@ def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
         if not webhook:
             print("RSS_CRAWLER_WEBHOOK_URL이 없어 발송하지 못했습니다.", file=sys.stderr)
             return 2
-        post_discord(webhook, discord_payload(relevant, errors))
+        post_discord(webhook, discord_payload(relevant, errors, config))
 
     state["initialized"] = True
     state["last_run"] = now

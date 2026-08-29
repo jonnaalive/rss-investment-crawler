@@ -63,6 +63,33 @@
     "VLO": ["valero energy", "valero"],
     "LPG": ["dorian lpg"]
   },
+  "theme_context": {
+    "AI 전력": {
+      "related_companies": ["GEV", "POWL", "STRL", "BE"],
+      "why_it_matters": "데이터센터 전력 수요와 발전·송배전 설비 투자는 AI-POWER 보유 종목의 수주와 증설 논지에 연결됩니다.",
+      "check": "전력 수요 전망, 실제 프로젝트 규모, 고객 CAPEX 또는 수주 변화인지 확인"
+    },
+    "가스·LNG": {
+      "related_companies": ["KGS", "BKR", "OKE"],
+      "why_it_matters": "가스 생산·수송·압축·LNG 투자는 KGS·BKR·OKE의 물량과 설비 수요에 연결됩니다.",
+      "check": "단기 가격 뉴스인지 구조적인 생산·수송·설비 투자 변화인지 확인"
+    },
+    "정유": {
+      "related_companies": ["VLO", "MPC", "DINO"],
+      "why_it_matters": "정제품 수급과 재고, 수출, 가동률은 정유사의 마진과 실적 방향을 결정합니다.",
+      "check": "원유 가격보다 정제품 재고·수출·가동률·크랙스프레드 방향을 확인"
+    },
+    "해양 에너지": {
+      "related_companies": ["FTI", "TDW", "SDRL", "BKR"],
+      "why_it_matters": "해양 FID와 시추·Subsea 투자는 장비 수주, 선박 가동률과 일일 운임에 연결됩니다.",
+      "check": "단순 계획이 아니라 FID·계약·백로그로 확정됐는지 확인"
+    },
+    "통화·신용": {
+      "related_companies": [],
+      "why_it_matters": "금리와 대출 태도는 포트폴리오 할인율, 자금조달 비용과 경기민감 수요에 영향을 줍니다.",
+      "check": "시장 예상과 달라진 문구, 금리 경로 또는 대출 기준 변화가 있는지 확인"
+    }
+  },
   "minimum_score": 5,
   "max_items_per_message": 8,
   "state_retention_days": 90

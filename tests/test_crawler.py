@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crawler import classify, clean_text, parse_feed, prune_seen
+from crawler import classify, clean_text, discord_payload, parse_feed
 
 
 class CrawlerTests(unittest.TestCase):
@@ -29,6 +29,23 @@ class CrawlerTests(unittest.TestCase):
 
     def test_html_cleanup(self):
         self.assertEqual(clean_text("<p>A &amp; B</p>"), "A & B")
+
+    def test_discord_payload_has_investment_context(self):
+        item = {
+            "title": "Refinery exports rise", "url": "https://example.com/a",
+            "source": "EIA", "summary": "Exports reached a record.",
+            "themes": ["정유"], "companies": [], "score": 5,
+        }
+        config = {"theme_context": {"정유": {
+            "related_companies": ["VLO", "MPC"],
+            "why_it_matters": "정유 마진에 연결됩니다.",
+            "check": "크랙스프레드 확인",
+        }}}
+        content = discord_payload([item], [], config)["content"]
+        self.assertIn("무슨 일", content)
+        self.assertIn("왜 보나", content)
+        self.assertIn("VLO, MPC", content)
+        self.assertIn("확인 행동", content)
 
 
 if __name__ == "__main__":
