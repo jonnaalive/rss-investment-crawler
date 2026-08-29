@@ -10,6 +10,11 @@ on:
         required: false
         type: boolean
         default: false
+      send_preview:
+        description: 최신 관련 기사 1건 미리보기 전송
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -33,13 +38,15 @@ jobs:
         env:
           RSS_CRAWLER_WEBHOOK_URL: ${{ secrets.RSS_CRAWLER_WEBHOOK_URL }}
         run: |
-          if [ "${{ inputs.send_test }}" = "true" ]; then
+          if [ "${{ inputs.send_preview }}" = "true" ]; then
+            python crawler.py --send-preview
+          elif [ "${{ inputs.send_test }}" = "true" ]; then
             python crawler.py --send-test
           else
             python crawler.py
           fi
       - name: Save crawler state
-        if: ${{ inputs.send_test != true }}
+        if: ${{ inputs.send_test != true && inputs.send_preview != true }}
         run: |
           git config user.name "rss-crawler"
           git config user.email "rss-crawler@users.noreply.github.com"

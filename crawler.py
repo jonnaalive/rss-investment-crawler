@@ -126,7 +126,7 @@ def post_discord(webhook: str, payload: dict[str, Any]) -> None:
             raise RuntimeError(f"Discord HTTP {response.status}")
 
 
-def run(dry_run: bool, send_test: bool) -> int:
+def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     webhook = os.environ.get("RSS_CRAWLER_WEBHOOK_URL", "").strip()
     if send_test:
@@ -151,7 +151,7 @@ def run(dry_run: bool, send_test: bool) -> int:
             errors.append(feed["id"])
             state["feed_health"][feed["id"]] = {"last_error": now, "error": str(exc)[:200]}
 
-    unseen = [article for article in all_articles if article["id"] not in state["seen"]]
+    unseen = [article for article in all_articles if send_preview or article["id"] not in state["seen"]]
     relevant = [
         classify(article, config, feed_weights[article["feed_id"]])
         for article in unseen
@@ -159,6 +159,17 @@ def run(dry_run: bool, send_test: bool) -> int:
     relevant = [item for item in relevant if item["score"] >= config["minimum_score"]]
     relevant.sort(key=lambda item: (item["score"], item["published_at"]), reverse=True)
     relevant = relevant[: config["max_items_per_message"]]
+
+    if send_preview:
+        if not webhook:
+            print("RSS_CRAWLER_WEBHOOK_URL이 필요합니다.", file=sys.stderr)
+            return 2
+        if not relevant:
+            print("미리보기로 보낼 관련 기사가 없습니다.")
+            return 1
+        post_discord(webhook, discord_payload(relevant[:1], errors))
+        print(f"미리보기 1건을 전송했습니다: {relevant[0]['title']}")
+        return 0
 
     if dry_run:
         print(json.dumps({"fetched": len(all_articles), "unseen": len(unseen), "relevant": relevant, "errors": errors}, ensure_ascii=False, indent=2))
@@ -184,5 +195,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--send-test", action="store_true")
+    parser.add_argument("--send-preview", action="store_true")
     args = parser.parse_args()
-    raise SystemExit(run(args.dry_run, args.send_test))
+    raise SystemExit(run(args.dry_run, args.send_test, args.send_preview))

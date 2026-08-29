@@ -27,6 +27,7 @@ python3 -m unittest discover -s tests -v
 ```
 
 `--dry-run`은 Discord로 전송하거나 `data/state.json`을 수정하지 않습니다. 최초 실제 실행은 기준선만 만들며, 테스트 알림은 Actions의 `workflow_dispatch`에서 `send_test`를 선택해 보낼 수 있습니다.
+`send_preview`는 기준선을 수정하지 않고 현재 관련 기사 중 1건만 실제 형식으로 전송합니다.
 
 ## 설정
 
