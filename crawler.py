@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
 STATE_PATH = ROOT / "data" / "state.json"
 USER_AGENT = "rss-investment-crawler/1.0 (personal investment monitor)"
+GEMINI_MODEL = "gemini-3.1-flash-lite"
 TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -74,6 +75,25 @@ def fetch_feed(feed: dict[str, Any]) -> list[dict[str, str]]:
     request = urllib.request.Request(feed["url"], headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=12) as response:
         return parse_feed(response.read(), feed)
+
+
+def translate_summary(summary: str, api_key: str) -> str:
+    if not summary or not api_key:
+        return summary
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    prompt = (
+        "다음 투자 뉴스 RSS 요약을 사실을 추가하거나 추론하지 말고 자연스러운 한국어 1~2문장으로 "
+        "번역하라. 숫자, 단위, 회사명은 보존하고 번역문만 출력하라.\n\n" + summary[:1500]
+    )
+    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300}}
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key, "User-Agent": USER_AGENT},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        result = json.loads(response.read())
+    return clean_text(result["candidates"][0]["content"]["parts"][0]["text"])
 
 
 def classify(article: dict[str, str], config: dict[str, Any], source_weight: int) -> dict[str, Any]:
@@ -151,6 +171,7 @@ def post_discord(webhook: str, payload: dict[str, Any]) -> None:
 def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     webhook = os.environ.get("RSS_CRAWLER_WEBHOOK_URL", "").strip()
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if send_test:
         if not webhook:
             print("RSS_CRAWLER_WEBHOOK_URL이 필요합니다.", file=sys.stderr)
@@ -181,6 +202,12 @@ def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
     relevant = [item for item in relevant if item["score"] >= config["minimum_score"]]
     relevant.sort(key=lambda item: (item["score"], item["published_at"]), reverse=True)
     relevant = relevant[: config["max_items_per_message"]]
+    if not dry_run:
+        for item in relevant:
+            try:
+                item["summary"] = translate_summary(item["summary"], gemini_key)
+            except (KeyError, IndexError, OSError, ValueError, urllib.error.URLError) as exc:
+                print(f"번역 실패, 영어 원문으로 대체: {item['id']} ({type(exc).__name__})", file=sys.stderr)
 
     if send_preview:
         if not webhook:

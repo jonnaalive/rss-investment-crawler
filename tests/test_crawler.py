@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crawler import classify, clean_text, discord_payload, parse_feed
+from crawler import classify, clean_text, discord_payload, parse_feed, translate_summary
 
 
 class CrawlerTests(unittest.TestCase):
@@ -46,6 +46,9 @@ class CrawlerTests(unittest.TestCase):
         self.assertIn("왜 보나", content)
         self.assertIn("VLO, MPC", content)
         self.assertIn("확인 행동", content)
+
+    def test_translation_without_key_falls_back(self):
+        self.assertEqual(translate_summary("Natural gas demand rose.", ""), "Natural gas demand rose.")
 
 
 if __name__ == "__main__":

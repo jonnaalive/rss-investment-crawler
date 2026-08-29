@@ -37,6 +37,7 @@ jobs:
       - name: Crawl or test Discord
         env:
           RSS_CRAWLER_WEBHOOK_URL: ${{ secrets.RSS_CRAWLER_WEBHOOK_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           if [ "${{ inputs.send_preview }}" = "true" ]; then
             python crawler.py --send-preview

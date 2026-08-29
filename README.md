@@ -16,8 +16,9 @@ GitHub Actions는 하루 4회 실행합니다. 신규 기사 중 투자 키워�
 1. Discord `rss-crawler` 채널 설정에서 `연동` → `웹후크` → `새 웹후크`를 만듭니다.
 2. 이 프로젝트의 GitHub 저장소에서 `Settings` → `Secrets and variables` → `Actions`로 이동합니다.
 3. `RSS_CRAWLER_WEBHOOK_URL`이라는 이름으로 Webhook URL을 저장합니다.
+4. 한국어 번역용 Gemini 키를 `GEMINI_API_KEY`라는 이름으로 저장합니다.
 
-Webhook URL은 파일이나 Git 커밋에 넣지 않습니다.
+Webhook URL과 Gemini 키는 파일이나 Git 커밋에 넣지 않습니다. 관련 기사로 선별된 항목의 RSS 요약만 Gemini Free Tier로 번역하며, 번역 실패 시 영어 원문으로 대체합니다.
 
 ## 로컬 검증
 
