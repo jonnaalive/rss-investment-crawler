@@ -96,6 +96,58 @@ def translate_summary(summary: str, api_key: str) -> str:
     return clean_text(result["candidates"][0]["content"]["parts"][0]["text"])
 
 
+def analyze_article(item: dict[str, Any], config: dict[str, Any], api_key: str) -> dict[str, Any]:
+    if not api_key:
+        return {}
+    contexts = config.get("theme_context", {})
+    related = list(item["companies"])
+    context_lines = []
+    for theme in item["themes"]:
+        context = contexts.get(theme, {})
+        related.extend(context.get("related_companies", []))
+        context_lines.append(f"{theme}: {context.get('why_it_matters', '')}")
+    related = list(dict.fromkeys(related))
+    prompt = f"""당신은 보수적인 투자 뉴스 분석기다. 아래 RSS 정보만 사용하고 사실과 추론을 구분하라.
+기사에 없는 실적 숫자, 목표가, 인과관계를 만들지 마라. 종목별 영향은 '가능한 시사점'으로만 쓰고,
+관련성이 약하면 불명확이라고 답하라. 중요도는 포트폴리오 논지에 미칠 잠재 영향 기준 1~5다.
+
+제목: {item['title']}
+RSS 요약: {item['summary']}
+분류: {', '.join(item['themes'])}
+검토 종목: {', '.join(related) or '포트폴리오 전반'}
+기존 연결 규칙: {' | '.join(context_lines)}
+
+다음 JSON만 출력하라:
+{{
+  "translated_summary": "사실만 담은 자연스러운 한국어 1~2문장",
+  "importance": 1,
+  "importance_reason": "중요도 이유 한 문장",
+  "implications": [
+    {{"company": "티커", "direction": "긍정|부정|혼재|불명확", "text": "가능한 영향 한 문장"}}
+  ],
+  "watch_items": ["추가 확인 변수"],
+  "caveat": "기사만으로 확정할 수 없는 점"
+}}"""
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 900, "responseMimeType": "application/json"},
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key, "User-Agent": USER_AGENT},
+    )
+    with urllib.request.urlopen(request, timeout=25) as response:
+        result = json.loads(response.read())
+    raw = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+    analysis = json.loads(raw)
+    analysis["importance"] = max(1, min(5, int(analysis.get("importance", 1))))
+    analysis["implications"] = analysis.get("implications", [])[:5]
+    analysis["watch_items"] = analysis.get("watch_items", [])[:3]
+    return analysis
+
+
 def classify(article: dict[str, str], config: dict[str, Any], source_weight: int) -> dict[str, Any]:
     text = f"{article['title']} {article['summary']}".casefold()
     themes = [name for name, words in config["themes"].items() if any(word.casefold() in text for word in words)]
@@ -144,20 +196,34 @@ def discord_payload(
             if context.get("check"):
                 check_parts.append(context["check"])
         related_companies = list(dict.fromkeys(related_companies))
-        summary = item["summary"][:500] or "RSS에 별도 요약이 없습니다. 원문 확인이 필요합니다."
+        analysis = item.get("analysis", {})
+        summary = analysis.get("translated_summary") or item["summary"][:500] or "RSS에 별도 요약이 없습니다. 원문 확인이 필요합니다."
+        importance = max(1, min(5, int(analysis.get("importance", 2))))
+        bar = "■" * importance + "□" * (5 - importance)
+        level_icon = {1: "⬜", 2: "🟩", 3: "🟨", 4: "🟧", 5: "🟥"}[importance]
+        implications = analysis.get("implications", [])
+        implication_text = "\n".join(
+            f"- **{row.get('company', '?')} [{row.get('direction', '불명확')}]**: {row.get('text', '')}"
+            for row in implications
+        ) or "- 기사만으로 특정 종목 영향을 확정하기 어렵습니다."
+        watch_text = " / ".join(analysis.get("watch_items", [])) or " / ".join(dict.fromkeys(check_parts)) or "원문 확인"
         lines.extend([
             "",
             f"### [{item['title']}]({item['url']})",
             f"**분류:** {' · '.join(item['themes']) or '공식 자료'}  |  **출처:** {item['source']}",
+            f"**중요도:** {level_icon} `{bar}` **{importance}/5**",
+            f"**중요도 근거:** {analysis.get('importance_reason', '공식 자료이지만 직접적인 종목 영향은 추가 확인이 필요합니다.')}",
             f"**무슨 일:** {summary}",
-            f"**왜 보나:** {' '.join(dict.fromkeys(why_parts)) or '보유 종목 직접 언급 여부와 투자 논지 영향을 확인해야 합니다.'}",
             f"**연결 종목:** {', '.join(related_companies) or '포트폴리오 전반'}",
-            f"**확인 행동:** {' / '.join(dict.fromkeys(check_parts)) or '원문 확인 후 논지 변화 여부 판정'}",
+            "**종목별 가능한 시사점:**",
+            implication_text,
+            f"**추가 확인:** {watch_text}",
+            f"**해석 한계:** {analysis.get('caveat', 'RSS 요약만으로 실적 영향을 확정할 수 없습니다.')}",
             "**현재 판정:** REVIEW · 자동 매매 행동 없음",
         ])
     if errors:
         lines.extend(["", f"⚠️ 피드 오류 {len(errors)}건: " + ", ".join(errors)])
-    return {"content": "\n".join(lines)[:1900]}
+    return {"content": "\n".join(lines)[:1950]}
 
 
 def post_discord(webhook: str, payload: dict[str, Any]) -> None:
@@ -205,9 +271,13 @@ def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
     if not dry_run:
         for item in relevant:
             try:
-                item["summary"] = translate_summary(item["summary"], gemini_key)
+                item["analysis"] = analyze_article(item, config, gemini_key)
             except (KeyError, IndexError, OSError, ValueError, urllib.error.URLError) as exc:
-                print(f"번역 실패, 영어 원문으로 대체: {item['id']} ({type(exc).__name__})", file=sys.stderr)
+                print(f"AI 분석 실패, 규칙 기반 설명으로 대체: {item['id']} ({type(exc).__name__})", file=sys.stderr)
+                try:
+                    item["summary"] = translate_summary(item["summary"], gemini_key)
+                except (KeyError, IndexError, OSError, ValueError, urllib.error.URLError):
+                    pass
 
     if send_preview:
         if not webhook:
@@ -229,7 +299,8 @@ def run(dry_run: bool, send_test: bool, send_preview: bool = False) -> int:
         if not webhook:
             print("RSS_CRAWLER_WEBHOOK_URL이 없어 발송하지 못했습니다.", file=sys.stderr)
             return 2
-        post_discord(webhook, discord_payload(relevant, errors, config))
+        for index, item in enumerate(relevant):
+            post_discord(webhook, discord_payload([item], errors if index == 0 else [], config))
 
     state["initialized"] = True
     state["last_run"] = now

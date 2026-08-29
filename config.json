@@ -91,6 +91,6 @@
     }
   },
   "minimum_score": 5,
-  "max_items_per_message": 8,
+  "max_items_per_message": 5,
   "state_retention_days": 90
 }

@@ -43,9 +43,20 @@ class CrawlerTests(unittest.TestCase):
         }}}
         content = discord_payload([item], [], config)["content"]
         self.assertIn("무슨 일", content)
-        self.assertIn("왜 보나", content)
         self.assertIn("VLO, MPC", content)
-        self.assertIn("확인 행동", content)
+        self.assertIn("중요도", content)
+        self.assertIn("종목별 가능한 시사점", content)
+        self.assertIn("추가 확인", content)
+
+    def test_importance_is_visualized(self):
+        item = {
+            "title": "Event", "url": "https://example.com", "source": "EIA",
+            "summary": "Summary", "themes": [], "companies": [], "score": 5,
+            "analysis": {"importance": 4, "importance_reason": "Material change", "implications": []},
+        }
+        content = discord_payload([item], [], {})["content"]
+        self.assertIn("■■■■□", content)
+        self.assertIn("4/5", content)
 
     def test_translation_without_key_falls_back(self):
         self.assertEqual(translate_summary("Natural gas demand rose.", ""), "Natural gas demand rose.")
